@@ -1,43 +1,34 @@
-// ai-excited-01 — "One Match. One Galaxy."
+// ai-excited-01 entry: "One Match. One Galaxy."
 //
-// The entry image is committed next to this file as entry.png. This
-// program simply copies that exact image into the output directory
-// requested by the runner, so every run produces byte-identical output.
-//
-// Output directory resolution:
-//   1. MAKEFUN_OUTPUT_DIR, when it is set to a non-empty value.
-//   2. Otherwise the fallback /output.
-//
-// Node 22, standard library only. No network access.
+// This program is intentionally boring: the artwork is already finished
+// and committed as entry.png next to this file. All the program does is
+// place an exact copy of that image where the judge expects it, so the
+// output is byte-identical on every run.
 
-import { copyFileSync, mkdirSync } from "node:fs";
+import { copyFileSync, mkdirSync, statSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const OUTPUT_FILE = "entry.png";
-const FALLBACK_DIR = "/output";
+// Resolve the directory this file lives in, so the entry works no
+// matter which working directory the runner starts from.
+const here = dirname(fileURLToPath(import.meta.url));
+const source = join(here, "entry.png");
 
-function resolveOutputDir(): string {
-  const raw = process.env.MAKEFUN_OUTPUT_DIR;
-  if (typeof raw === "string" && raw.trim() !== "") {
-    // Accept relative paths too: resolve them against the working directory.
-    return resolve(raw.trim());
-  }
-  return FALLBACK_DIR;
-}
+// MAKEFUN_OUTPUT_DIR wins when set to a non-empty value; otherwise
+// the conventional fallback location is used. A relative value is
+// resolved against the current working directory, and a trailing
+// slash or stray whitespace is harmless.
+const rawDir = process.env.MAKEFUN_OUTPUT_DIR;
+const outputDir =
+  rawDir !== undefined && rawDir.trim() !== ""
+    ? resolve(rawDir.trim())
+    : "/output";
 
-function main(): void {
-  const outDir = resolveOutputDir();
-  const outPath = join(outDir, OUTPUT_FILE);
+mkdirSync(outputDir, { recursive: true });
 
-  // The committed image lives beside this script.
-  const here = dirname(fileURLToPath(import.meta.url));
-  const sourcePath = join(here, OUTPUT_FILE);
+const destination = join(outputDir, "entry.png");
+copyFileSync(source, destination);
 
-  mkdirSync(outDir, { recursive: true });
-  copyFileSync(sourcePath, outPath);
-
-  console.log(`Copied ${sourcePath} -> ${outPath}`);
-}
-
-main();
+// Confirm the copy landed where the judge will look for it.
+const written = statSync(destination);
+console.log(`Wrote ${destination} (${written.size} bytes)`);
